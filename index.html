@@ -1,0 +1,74 @@
+<html>
+  <head>
+    <!-- Load TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2"></script>
+    <!-- Load BodyPix -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0"></script>
+  </head>
+
+  <body>
+    <video controls id="video" width="480" height="320" poster playsinline></video>
+    <canvas hidden id="canvas"></canvas>
+     <button id="blurButton" type="button" enabled>Blur Video</button>
+     <button id="regButton" type="button" disabled>Regular Video</button>
+    <script>
+      // HTMLMediaElement
+      const videoElement = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const blurVideoButton = document.getElementById('blurButton');
+      const regVideoButton = document.getElementById('regButton');
+
+      let enableBlurVideo = false;
+
+      blurVideoButton.addEventListener('click', e=> {
+        blurVideoButton.disabled = true;
+        regVideoButton.disabled = false;
+        enableBlurVideo = true;
+        videoElement.hidden = true;
+        canvas.hidden = false;
+        console.log(`blur video ${enableBlurVideo}`);
+        renderBlurVideo();
+      })
+
+      regVideoButton.addEventListener('click', e => {
+        regVideoButton.disabled = true;
+        blurVideoButton.disabled = false;
+        enableBlurVideo = false;
+        videoElement.hidden = false;
+        canvas.hidden = true;
+        console.log(`regular video ${enableBlurVideo}`);
+      })
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false})
+      // stream - MediaStream
+      .then(async (stream) => {
+        videoElement.srcObject = stream;
+        await videoElement.play();
+        canvas.height = videoElement.videoHeight;
+        canvas.width = videoElement.videoWidth;
+      })
+
+
+      async function renderBlurVideo() {
+        const net = await bodyPix.load({
+          architecture: 'MobileNetV1',
+          outputStride: 16,
+          multiplier: 0.5,
+          quantBytes: 2
+        });
+        const backgroundBlurAmount = 2;
+        const edgeBlurAmount = 1;
+        const flipHorizontal = false;
+
+        while(enableBlurVideo) {
+          const segmentation = await net.segmentPerson(videoElement);
+          bodyPix.drawBokehEffect(
+            canvas, videoElement, segmentation, backgroundBlurAmount,
+            edgeBlurAmount, flipHorizontal
+          );
+        }
+      }
+
+    </script>
+  </body>
+</html>
